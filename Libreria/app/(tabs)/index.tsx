@@ -1,0 +1,387 @@
+// Home Screen Component
+// Main landing page with best-sellers
+// Shows featured books and vinyl
+// Has animated drawer menu
+// Cart icon with item count
+
+import React, { useCallback, useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  SafeAreaView,
+  TouchableOpacity,
+  ActivityIndicator,
+  ScrollView,
+  Modal,
+  Animated,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { getTopBestSellers, Product } from '../../lib/database';
+import { ProductCard } from '../../components/product-card';
+import { useCart } from '../../lib/cart-context';
+
+// Home screen component
+export default function HomeScreen() {
+  const router = useRouter();
+  const { itemCount } = useCart();
+  const [bestSellers, setBestSellers] = useState<Product[]>([]);
+  const [vinylBestSellers, setVinylBestSellers] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showMenu, setShowMenu] = useState(false);
+  const slideAnim = useRef(new Animated.Value(-280)).current;
+
+  // Load best-selling products
+  const loadBestSellers = useCallback(async () => {
+    try {
+      const [books, vinyls] = await Promise.all([
+        getTopBestSellers('book'),
+        getTopBestSellers('vinyl'),
+      ]);
+      setBestSellers(books);
+      setVinylBestSellers(vinyls);
+    } catch (error) {
+      console.error('Error loading best sellers:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadBestSellers();
+    }, [loadBestSellers])
+  );
+
+  useEffect(() => {
+    if (showMenu) {
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: -280,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [showMenu, slideAnim]);
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.menuButton}
+          onPress={() => setShowMenu(!showMenu)}
+        >
+          <Ionicons name="menu" size={24} color="#333" />
+        </TouchableOpacity>
+        <View style={styles.logoContainer}>
+          <Text style={styles.logo}>Librería Caja de Pandora</Text>
+          <Text style={styles.tagline}>Descubre tesoros literarios y musicales</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.cartButton}
+          onPress={() => router.push('/cart')}
+        >
+          <Ionicons name="cart" size={24} color="#ffd700" />
+          {itemCount > 0 && (
+            <View style={styles.cartBadge}>
+              <Text style={styles.cartBadgeText}>{itemCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {showMenu && (
+        <>
+          <TouchableOpacity
+            style={styles.drawerBackdrop}
+            onPress={() => setShowMenu(false)}
+            activeOpacity={1}
+          />
+          <Animated.View style={[styles.drawerMenuWrapper, { transform: [{ translateX: slideAnim }] }]}>
+            <TouchableOpacity
+              style={styles.drawerCloseButton}
+              onPress={() => setShowMenu(false)}
+            >
+              <Ionicons name="close" size={28} color="#333" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.drawerMenuItem}
+              onPress={() => {
+                router.push('/(tabs)/explore');
+                setShowMenu(false);
+              }}
+            >
+              <Ionicons name="book" size={24} color="#ffd700" />
+              <Text style={styles.drawerMenuItemText}>Catálogo de Libros</Text>
+            </TouchableOpacity>
+
+            <View style={styles.drawerDivider} />
+
+            <TouchableOpacity
+              style={styles.drawerMenuItem}
+              onPress={() => {
+                router.push('/(tabs)/vinyl');
+                setShowMenu(false);
+              }}
+            >
+              <Ionicons name="musical-notes" size={24} color="#ffd700" />
+              <Text style={styles.drawerMenuItemText}>Catálogo de Vinilos</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </>
+      )}
+
+      {loading ? (
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color="#ffd700" />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.banner}>
+            <Text style={styles.bannerTitle}>Top 5 Libros Best Sellers</Text>
+            <Text style={styles.bannerSubtitle}>
+              Los libros mas vendidos del catalogo
+            </Text>
+          </View>
+          <FlatList
+            data={bestSellers}
+            numColumns={2}
+            columnWrapperStyle={styles.columnWrapper}
+            renderItem={({ item }) => (
+              <ProductCard product={item} isBestSeller={true} />
+            )}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            ListFooterComponent={<View style={styles.sectionSpacing} />}
+          />
+
+          <View style={styles.banner}>
+            <Text style={styles.bannerTitle}>Top 5 Vinilos Best Sellers</Text>
+            <Text style={styles.bannerSubtitle}>
+              Los vinilos mas vendidos del catalogo
+            </Text>
+          </View>
+          <FlatList
+            data={vinylBestSellers}
+            numColumns={2}
+            columnWrapperStyle={styles.columnWrapper}
+            renderItem={({ item }) => (
+              <ProductCard product={item} isBestSeller={true} />
+            )}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+          />
+
+          <View style={styles.footer}>
+            <TouchableOpacity
+              style={styles.catalogButton}
+              onPress={() => router.push('/(tabs)/explore')}
+            >
+              <Ionicons name="book" size={24} color="#333" />
+              <Text style={styles.catalogText}>Catálogo de Libros</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.catalogButton}
+              onPress={() => router.push('/(tabs)/vinyl')}
+            >
+              <Ionicons name="musical-notes" size={24} color="#333" />
+              <Text style={styles.catalogText}>Catálogo de Vinilos</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      )}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  menuButton: {
+    padding: 8,
+  },
+  logoContainer: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+  logo: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  tagline: {
+    fontSize: 11,
+    color: '#666',
+    marginTop: 2,
+  },
+  drawerMenuWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: '70%',
+    backgroundColor: '#fff',
+    paddingTop: 20,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    zIndex: 1000,
+  },
+  drawerBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 999,
+  },
+  drawerCloseButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  drawerMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  drawerMenuItemText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginLeft: 16,
+  },
+  drawerDivider: {
+    height: 1,
+    backgroundColor: '#f0f0f0',
+    marginVertical: 8,
+  },
+  cartButton: {
+    position: 'relative',
+    padding: 8,
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#e74c3c',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cartBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scrollContent: {
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  columnWrapper: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+  },
+  sectionSpacing: {
+    height: 16,
+  },
+  banner: {
+    marginVertical: 16,
+    marginHorizontal: 8,
+    padding: 16,
+    backgroundColor: '#4b0082',
+    borderRadius: 12,
+  },
+  bannerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  bannerSubtitle: {
+    fontSize: 13,
+    color: '#ecf0f1',
+  },
+  viewAllButton: {
+    marginHorizontal: 8,
+    marginVertical: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#ffd700',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  secondaryButton: {
+    backgroundColor: '#ffd700',
+  },
+  viewAllText: {
+    color: '#333',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'stretch',
+    paddingVertical: 24,
+    paddingHorizontal: 12,
+    paddingBottom: 32,
+    gap: 12,
+    backgroundColor: '#f5f5f5',
+  },
+  catalogButton: {
+    backgroundColor: '#ffd700',
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+  },
+  catalogText: {
+    color: '#333',
+    fontWeight: '700',
+    fontSize: 15,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+});
