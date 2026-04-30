@@ -1,11 +1,13 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { Cliente } from './database';
 
 interface AuthContextType {
   session: Session | null;
   user: any;
+  profile: Cliente | null;
+  isAdmin: boolean;
   signUp: (email: string, password: string, userData: any) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -17,7 +19,30 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<Cliente | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const loadProfile = async (email?: string | null) => {
+    if (!email) {
+      setProfile(null);
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('clientes')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error loading profile:', error);
+      setProfile(null);
+      return null;
+    }
+
+    setProfile((data as Cliente | null) || null);
+    return data as Cliente | null;
+  };
 
   useEffect(() => {
     // Obtener sesión al iniciar
@@ -27,6 +52,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (error) throw error;
         setSession(data?.session || null);
         setUser(data?.session?.user || null);
+        await loadProfile(data?.session?.user?.email);
       } catch (error) {
         console.error('Error loading session:', error);
       } finally {
@@ -42,6 +68,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       setSession(session);
       setUser(session?.user || null);
+      void loadProfile(session?.user?.email);
     });
 
     return () => subscription?.unsubscribe();
@@ -70,6 +97,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             direccion: userData.direccion || null,
             ciudad: userData.ciudad || null,
             codigo_postal: userData.codigoPostal || null,
+            rol: 'cliente',
           });
         
         if (insertError) {
@@ -109,6 +137,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (error) throw error;
       setSession(null);
       setUser(null);
+      setProfile(null);
     } catch (error) {
       throw error;
     } finally {
@@ -117,7 +146,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, signUp, signIn, signOut, loading }}>
+    <AuthContext.Provider
+      value={{
+        session,
+        user,
+        profile,
+        isAdmin: profile?.rol === 'admin',
+        signUp,
+        signIn,
+        signOut,
+        loading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

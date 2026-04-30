@@ -14,7 +14,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
-  Modal,
   Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -23,11 +22,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { getTopBestSellers, Product } from '../../lib/database';
 import { ProductCard } from '../../components/product-card';
 import { useCart } from '../../lib/cart-context';
+import { useAuth } from '../../lib/auth-context';
 
 // Home screen component
 export default function HomeScreen() {
   const router = useRouter();
   const { itemCount } = useCart();
+  const { isAdmin } = useAuth();
   const [bestSellers, setBestSellers] = useState<Product[]>([]);
   const [vinylBestSellers, setVinylBestSellers] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,17 +86,25 @@ export default function HomeScreen() {
           <Text style={styles.logo}>Librería Caja de Pandora</Text>
           <Text style={styles.tagline}>Descubre tesoros literarios y musicales</Text>
         </View>
-        <TouchableOpacity
-          style={styles.cartButton}
-          onPress={() => router.push('/cart')}
-        >
-          <Ionicons name="cart" size={24} color="#ffd700" />
-          {itemCount > 0 && (
-            <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>{itemCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.loginButton}
+            onPress={() => router.push('/signin')}
+          >
+            <Ionicons name="person-circle-outline" size={24} color="#4b0082" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.cartButton}
+            onPress={() => router.push('/cart')}
+          >
+            <Ionicons name="cart" size={24} color="#ffd700" />
+            {itemCount > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{itemCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {showMenu && (
@@ -136,6 +145,23 @@ export default function HomeScreen() {
               <Ionicons name="musical-notes" size={24} color="#ffd700" />
               <Text style={styles.drawerMenuItemText}>Catálogo de Vinilos</Text>
             </TouchableOpacity>
+
+            {isAdmin && (
+              <>
+                <View style={styles.drawerDivider} />
+
+                <TouchableOpacity
+                  style={styles.drawerMenuItem}
+                  onPress={() => {
+                    router.push('/admin' as any);
+                    setShowMenu(false);
+                  }}
+                >
+                  <Ionicons name="settings" size={24} color="#4b0082" />
+                  <Text style={styles.drawerMenuItemText}>Administracion</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </Animated.View>
         </>
       )}
@@ -282,6 +308,14 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#f0f0f0',
     marginVertical: 8,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  loginButton: {
+    padding: 8,
   },
   cartButton: {
     position: 'relative',

@@ -19,19 +19,38 @@ import { useAuth } from '../lib/auth-context';
 import { getClienteOrdenes } from '../lib/database';
 import { useRouter } from 'expo-router';
 
+interface OrdenDetalleRaw {
+  id?: string;
+  cantidad: number;
+  precio_unitario?: number;
+  subtotal?: number;
+  producto?: {
+    titulo?: string;
+    autor?: string;
+  } | null;
+}
+
+interface OrdenRaw {
+  id: string;
+  estado: string;
+  total?: number;
+  fecha_creacion?: string;
+  detalles?: OrdenDetalleRaw[];
+}
+
 interface Orden {
   id: string;
   estado: string;
   total: number;
   fechaCreacion: string;
-  detalles: Array<{
+  detalles: {
     cantidad: number;
     precioUnitario: number;
     producto: {
       titulo: string;
       autor: string;
     };
-  }>;
+  }[];
 }
 
 // Orders screen component
@@ -47,7 +66,22 @@ export default function OrdersScreen() {
     try {
       if (!user) return;
       const data = await getClienteOrdenes(user.id);
-      setOrdenes(data);
+      const normalizedOrdenes = (data as OrdenRaw[]).map((orden) => ({
+        id: orden.id,
+        estado: orden.estado,
+        total: Number(orden.total || 0),
+        fechaCreacion: orden.fecha_creacion || new Date().toISOString(),
+        detalles: (orden.detalles || []).map((detalle) => ({
+          cantidad: Number(detalle.cantidad || 0),
+          precioUnitario: Number(detalle.precio_unitario || 0),
+          producto: {
+            titulo: detalle.producto?.titulo || 'Producto sin titulo',
+            autor: detalle.producto?.autor || 'Autor no disponible',
+          },
+        })),
+      }));
+
+      setOrdenes(normalizedOrdenes);
     } catch (error) {
       console.error('Error loading ordenes:', error);
     } finally {
@@ -88,11 +122,11 @@ export default function OrdersScreen() {
   const getEstadoLabel = (estado: string) => {
     switch (estado) {
       case 'completada':
-        return '✓ Completada';
+        return 'Completada';
       case 'pendiente':
-        return '⏳ Pendiente';
+        return 'Pendiente';
       case 'cancelada':
-        return '✗ Cancelada';
+        return 'Cancelada';
       default:
         return estado;
     }
@@ -102,14 +136,13 @@ export default function OrdersScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContent}>
-          <Text style={styles.emptyText}>🔐</Text>
-          <Text style={styles.emptyTitle}>Necesitas iniciar sesión</Text>
-          <Text style={styles.emptySubtitle}>Para ver tus órdenes</Text>
+          <Text style={styles.emptyTitle}>Necesitas iniciar sesion</Text>
+          <Text style={styles.emptySubtitle}>Para ver tus ordenes</Text>
           <TouchableOpacity
             style={styles.loginButton}
             onPress={() => router.push('/signin')}
           >
-            <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+            <Text style={styles.loginButtonText}>Iniciar sesion</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -120,7 +153,7 @@ export default function OrdersScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>📦 Mis Órdenes</Text>
+        <Text style={styles.title}>Mis ordenes</Text>
         <Text style={styles.subtitle}>
           Total: {ordenes.length} orden{ordenes.length !== 1 ? 'es' : ''}
         </Text>
@@ -132,16 +165,15 @@ export default function OrdersScreen() {
         </View>
       ) : ordenes.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>📭</Text>
-          <Text style={styles.emptyTitle}>No tienes órdenes</Text>
+          <Text style={styles.emptyTitle}>No tienes ordenes</Text>
           <Text style={styles.emptySubtitle}>
-            Realiza tu primera compra en el catálogo
+            Realiza tu primera compra en el catalogo
           </Text>
           <TouchableOpacity
             style={styles.shopButton}
             onPress={() => router.push('/explore')}
           >
-            <Text style={styles.shopButtonText}>Ir al Catálogo</Text>
+            <Text style={styles.shopButtonText}>Ir al catalogo</Text>
           </TouchableOpacity>
         </View>
       ) : (

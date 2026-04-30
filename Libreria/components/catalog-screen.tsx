@@ -191,6 +191,19 @@ export const CatalogScreen = ({
                 <Text style={styles.drawerMenuItemText}>Catálogo de Libros</Text>
               </TouchableOpacity>
             )}
+
+            <View style={styles.drawerDivider} />
+
+            <TouchableOpacity
+              style={styles.drawerMenuItem}
+              onPress={() => {
+                router.push('/admin' as any);
+                setShowMenu(false);
+              }}
+            >
+              <Ionicons name="settings" size={24} color="#4b0082" />
+              <Text style={styles.drawerMenuItemText}>Administracion</Text>
+            </TouchableOpacity>
           </Animated.View>
         </>
       )}

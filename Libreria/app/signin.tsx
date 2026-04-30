@@ -33,8 +33,8 @@ export default function SignInScreen() {
     const newErrors: { email?: string; password?: string } = {};
 
     if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
-      newErrors.email = 'Email inválido';
-    if (!password) newErrors.password = 'La contraseña es requerida';
+      newErrors.email = 'Email invalido';
+    if (!password) newErrors.password = 'La contrasena es requerida';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -53,12 +53,12 @@ export default function SignInScreen() {
     setIsSubmitting(true);
 
     try {
-      // Pequeño delay para evitar race conditions
+      // Pequeno delay para evitar race conditions
       await new Promise(resolve => setTimeout(resolve, 100));
 
       await signIn(email, password);
     } catch (error: any) {
-      const message = error.message || 'No se pudo iniciar sesión';
+      const message = error.message || 'No se pudo iniciar sesion';
       
       if (message.includes('429') || message.includes('Too Many Requests')) {
         Alert.alert(
@@ -67,7 +67,7 @@ export default function SignInScreen() {
           [{ text: 'OK' }]
         );
       } else {
-        Alert.alert('Error de autenticación', message);
+        Alert.alert('Error de autenticacion', message);
       }
     } finally {
       setIsSubmitting(false);
@@ -78,8 +78,8 @@ export default function SignInScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.logo}>📚 LibreríaShop</Text>
-        <Text style={styles.title}>Iniciar Sesión</Text>
+        <Text style={styles.logo}>LibreriaShop</Text>
+        <Text style={styles.title}>Iniciar sesion</Text>
       </View>
 
       {/* Form */}
@@ -103,10 +103,10 @@ export default function SignInScreen() {
 
         {/* Password */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Contraseña</Text>
+          <Text style={styles.label}>Contrasena</Text>
           <TextInput
             style={styles.input}
-            placeholder="Tu contraseña"
+            placeholder="Tu contrasena"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -126,7 +126,7 @@ export default function SignInScreen() {
           {loading || isSubmitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.buttonText}>Iniciar Sesión</Text>
+            <Text style={styles.buttonText}>Iniciar sesion</Text>
           )}
         </TouchableOpacity>
 
@@ -135,7 +135,7 @@ export default function SignInScreen() {
 
         {/* Sign Up Link */}
         <View style={styles.signUpContainer}>
-          <Text style={styles.signUpText}>¿No tienes cuenta?</Text>
+          <Text style={styles.signUpText}>No tienes cuenta?</Text>
           <TouchableOpacity
             onPress={() => router.push('/signup')}
           >

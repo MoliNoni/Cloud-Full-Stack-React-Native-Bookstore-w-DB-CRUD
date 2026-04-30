@@ -13,11 +13,12 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useCart } from '../lib/cart-context';
 import { useAuth } from '../lib/auth-context';
-import { procesarCompra } from '../lib/database';
+import { procesarCompra, PurchaseReceipt } from '../lib/database';
 import { CartDrawer } from '../components/cart-drawer';
 import { showAlert, showConfirm } from '../lib/dialog';
 
@@ -28,6 +29,7 @@ export default function CartScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
+  const [purchaseReceipt, setPurchaseReceipt] = useState<PurchaseReceipt | null>(null);
 
   // Handle checkout process
   const processCheckout = async () => {
@@ -45,9 +47,9 @@ export default function CartScreen() {
     try {
       setLoading(true);
 
-      await procesarCompra(user.id, items, total, user.email);
+      const receipt = await procesarCompra(user.id, items, total, user.email);
+      setPurchaseReceipt(receipt);
       clearCart();
-      router.push('/');
     } catch (error) {
       console.error('Error processing order:', error);
       showAlert('Error', 'No se pudo procesar tu compra. Intenta de nuevo.');
@@ -121,6 +123,124 @@ export default function CartScreen() {
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#3498db" />
           <Text style={styles.loadingText}>Procesando tu compra...</Text>
+        </View>
+      )}
+      {purchaseReceipt && (
+        <View style={styles.receiptOverlay}>
+          <View style={styles.receiptBackdrop} />
+          <View style={styles.receiptCard}>
+            <ScrollView
+              style={styles.receiptScroll}
+              contentContainerStyle={styles.receiptContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.receiptEyebrow}>Compra confirmada</Text>
+              <Text style={styles.receiptTitle}>Detalle de compra</Text>
+              <Text style={styles.receiptMessage}>
+                Tu pedido fue registrado correctamente. Aqui tienes el resumen.
+              </Text>
+
+              <View style={styles.receiptSection}>
+                <Text style={styles.sectionTitle}>Encabezado</Text>
+                <View style={styles.dataRow}>
+                  <Text style={styles.dataLabel}>Id</Text>
+                  <Text style={styles.dataValue}>{purchaseReceipt.encabezado.id}</Text>
+                </View>
+                <View style={styles.dataRow}>
+                  <Text style={styles.dataLabel}>Id cliente</Text>
+                  <Text style={styles.dataValue}>
+                    {purchaseReceipt.encabezado.idCliente}
+                  </Text>
+                </View>
+                <View style={styles.dataRow}>
+                  <Text style={styles.dataLabel}>Fecha</Text>
+                  <Text style={styles.dataValue}>
+                    {new Date(purchaseReceipt.encabezado.fecha).toLocaleString('es-CO')}
+                  </Text>
+                </View>
+                <View style={styles.dataRow}>
+                  <Text style={styles.dataLabel}>Subtotal</Text>
+                  <Text style={styles.dataValue}>
+                    ${purchaseReceipt.encabezado.subtotal.toFixed(2)}
+                  </Text>
+                </View>
+                <View style={styles.dataRow}>
+                  <Text style={styles.dataLabel}>Descuento total</Text>
+                  <Text style={styles.dataValue}>
+                    ${purchaseReceipt.encabezado.descuentoTotal.toFixed(2)}
+                  </Text>
+                </View>
+                <View style={styles.dataRow}>
+                  <Text style={styles.dataLabel}>Total</Text>
+                  <Text style={styles.totalValue}>
+                    ${purchaseReceipt.encabezado.total.toFixed(2)}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.receiptSection}>
+                <Text style={styles.sectionTitle}>Detalle compra</Text>
+                {purchaseReceipt.detalles.map((detalle) => (
+                  <View key={detalle.id} style={styles.detailCard}>
+                    <Text style={styles.detailTitle}>{detalle.titulo}</Text>
+                    <View style={styles.dataRow}>
+                      <Text style={styles.dataLabel}>Id</Text>
+                      <Text style={styles.dataValue}>{detalle.id}</Text>
+                    </View>
+                    <View style={styles.dataRow}>
+                      <Text style={styles.dataLabel}>Id encabezado</Text>
+                      <Text style={styles.dataValue}>{detalle.idEncabezado}</Text>
+                    </View>
+                    <View style={styles.dataRow}>
+                      <Text style={styles.dataLabel}>Id producto</Text>
+                      <Text style={styles.dataValue}>{detalle.idProducto}</Text>
+                    </View>
+                    <View style={styles.dataRow}>
+                      <Text style={styles.dataLabel}>Cantidad</Text>
+                      <Text style={styles.dataValue}>{detalle.cantidad}</Text>
+                    </View>
+                    <View style={styles.dataRow}>
+                      <Text style={styles.dataLabel}>Valor</Text>
+                      <Text style={styles.dataValue}>${detalle.valor.toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.dataRow}>
+                      <Text style={styles.dataLabel}>Descuento</Text>
+                      <Text style={styles.dataValue}>
+                        ${detalle.descuento.toFixed(2)}
+                      </Text>
+                    </View>
+                    <View style={styles.dataRow}>
+                      <Text style={styles.dataLabel}>Subtotal</Text>
+                      <Text style={styles.totalValue}>
+                        ${detalle.subtotal.toFixed(2)}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+
+            <View style={styles.receiptActions}>
+              <TouchableOpacity
+                style={[styles.receiptButton, styles.secondaryReceiptButton]}
+                onPress={() => {
+                  setPurchaseReceipt(null);
+                  router.push('/orders');
+                }}
+              >
+                <Text style={styles.secondaryReceiptText}>Ver mis ordenes</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.receiptButton, styles.primaryReceiptButton]}
+                onPress={() => {
+                  setPurchaseReceipt(null);
+                  router.push('/');
+                }}
+              >
+                <Text style={styles.primaryReceiptText}>Seguir comprando</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       )}
     </SafeAreaView>
@@ -226,5 +346,149 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  receiptOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    padding: 16,
+  },
+  receiptBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.38)',
+  },
+  receiptCard: {
+    width: '100%',
+    maxWidth: 460,
+    maxHeight: '88%',
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    overflow: 'hidden',
+    boxShadow: '0px 24px 60px rgba(15, 23, 42, 0.22)',
+    elevation: 16,
+  },
+  receiptScroll: {
+    flexGrow: 0,
+  },
+  receiptContent: {
+    padding: 24,
+  },
+  receiptEyebrow: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: '#4b0082',
+    marginBottom: 8,
+  },
+  receiptTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1f2937',
+    marginBottom: 8,
+  },
+  receiptMessage: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#6b7280',
+    marginBottom: 20,
+  },
+  receiptSection: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 16,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#4b0082',
+    marginBottom: 12,
+  },
+  dataRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 8,
+  },
+  dataLabel: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  dataValue: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1f2937',
+    textAlign: 'right',
+  },
+  totalValue: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#4b0082',
+    textAlign: 'right',
+  },
+  detailCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    padding: 14,
+    marginBottom: 12,
+  },
+  detailTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1f2937',
+    marginBottom: 10,
+  },
+  receiptActions: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 18,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    backgroundColor: '#fffdf4',
+  },
+  receiptButton: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryReceiptButton: {
+    backgroundColor: '#4b0082',
+  },
+  primaryReceiptButton: {
+    backgroundColor: '#ffd700',
+  },
+  secondaryReceiptText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  primaryReceiptText: {
+    color: '#333',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
