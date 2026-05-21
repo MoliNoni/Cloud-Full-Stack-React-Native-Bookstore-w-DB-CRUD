@@ -139,6 +139,9 @@ export default function CartScreen() {
               <Text style={styles.receiptMessage}>
                 Tu pedido fue registrado correctamente. Aqui tienes el resumen.
               </Text>
+              {purchaseReceipt?.emailStatus ? (
+                <Text style={styles.receiptNotice}>{purchaseReceipt.emailStatus}</Text>
+              ) : null}
 
               <View style={styles.receiptSection}>
                 <Text style={styles.sectionTitle}>Encabezado</Text>
@@ -402,7 +405,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: '#6b7280',
-    marginBottom: 20,
+    marginBottom: 12,
+  },
+  receiptNotice: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#1f512c',
+    backgroundColor: '#ecfdf5',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#d1fae5',
+    marginBottom: 16,
   },
   receiptSection: {
     backgroundColor: '#f8fafc',

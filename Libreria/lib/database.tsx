@@ -8,6 +8,7 @@
 import { supabase } from './supabase';
 import { getOpenLibraryCoverUrl } from './openlibrary';
 import { getDiscogsCoverUrl } from './discogs';
+import { sendOrderConfirmationEmail } from './email';
 
 export type ProductCategory = 'book' | 'vinyl';
 export type UserRole = 'cliente' | 'admin';
@@ -122,6 +123,7 @@ export interface PurchaseReceiptDetail {
 export interface PurchaseReceipt {
   encabezado: PurchaseReceiptHeader;
   detalles: PurchaseReceiptDetail[];
+  emailStatus?: string;
 }
 
 const normalizeProduct = (row: ProductRow): Product => {
@@ -293,6 +295,26 @@ export const getTopBestSellers = async (category: ProductCategory = 'book'): Pro
     return (data || []).map(normalizeProduct);
   } catch (error) {
     console.error('Error fetching best sellers:', error);
+    throw error;
+  }
+};
+
+export const getLatestProducts = async (
+  category: ProductCategory = 'book',
+  limit = 5
+): Promise<Product[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('productos')
+      .select('*')
+      .eq('category', category)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return (data || []).map(normalizeProduct);
+  } catch (error) {
+    console.error('Error fetching latest products:', error);
     throw error;
   }
 };
@@ -642,6 +664,40 @@ export const procesarCompra = async (
       subtotal: item.precio * item.cantidad,
     }));
 
+    let emailStatus = 'Orden registrada correctamente.';
+    const emailRecipient = userEmail || cliente.email;
+
+    if (emailRecipient) {
+      try {
+        await sendOrderConfirmationEmail(emailRecipient, {
+          encabezado: {
+            id: encabezado.id,
+            idCliente: cliente.id,
+            fecha:
+              encabezado.fecha_creacion ||
+              encabezado.fecha_actualizacion ||
+              new Date().toISOString(),
+            subtotal: total,
+            total,
+            descuentoTotal: 0,
+          },
+          detalles: receiptDetails,
+        }, items);
+        emailStatus = `Correo de confirmación enviado a ${emailRecipient}`;
+      } catch (sendError) {
+        console.warn('No se pudo enviar el correo de confirmación:', sendError);
+        const errorMessage =
+          sendError instanceof Error
+            ? sendError.message
+            : typeof sendError === 'string'
+            ? sendError
+            : JSON.stringify(sendError);
+        emailStatus = `No se pudo enviar el correo de confirmación. ${errorMessage}`;
+      }
+    } else {
+      emailStatus = 'No se encontró un correo para enviar la confirmación.';
+    }
+
     return {
       encabezado: {
         id: encabezado.id,
@@ -655,6 +711,7 @@ export const procesarCompra = async (
         descuentoTotal: 0,
       },
       detalles: receiptDetails,
+      emailStatus,
     };
   } catch (error) {
     console.error('Error procesando compra:', error);

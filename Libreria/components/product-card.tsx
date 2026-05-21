@@ -23,6 +23,7 @@ interface ProductCardProps {
   product: Product;
   onPress?: () => void;
   isBestSeller?: boolean;
+  compact?: boolean;
 }
 
 // Product card component
@@ -30,6 +31,7 @@ export const ProductCard = ({
   product,
   onPress,
   isBestSeller = false,
+  compact = false,
 }: ProductCardProps) => {
   const { addItem } = useCart();
   const [imageUri, setImageUri] = useState<string | null>(product.imageUrl);
@@ -51,7 +53,12 @@ export const ProductCard = ({
   };
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        compact && styles.compactContainer,
+      ]}
+    >
       <TouchableOpacity onPress={onPress} style={styles.imageContainer}>
         {imageUri ? (
           <Image
@@ -128,6 +135,10 @@ const styles = StyleSheet.create({
     // Top accent border with theme color
     borderTopWidth: 3,
     borderTopColor: '#4b0082',
+  },
+  compactContainer: {
+    width: 180,
+    marginBottom: 12,
   },
   imageContainer: {
     position: 'relative',

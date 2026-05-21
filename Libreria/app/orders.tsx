@@ -18,6 +18,7 @@ import {
 import { useAuth } from '../lib/auth-context';
 import { getClienteOrdenes } from '../lib/database';
 import { useRouter } from 'expo-router';
+import { ProfileMenu } from '../components/profile-menu';
 
 interface OrdenDetalleRaw {
   id?: string;
@@ -153,10 +154,15 @@ export default function OrdersScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Mis ordenes</Text>
-        <Text style={styles.subtitle}>
-          Total: {ordenes.length} orden{ordenes.length !== 1 ? 'es' : ''}
-        </Text>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.title}>Mis ordenes</Text>
+            <Text style={styles.subtitle}>
+              Total: {ordenes.length} orden{ordenes.length !== 1 ? 'es' : ''}
+            </Text>
+          </View>
+          <ProfileMenu />
+        </View>
       </View>
 
       {loading ? (
@@ -260,6 +266,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   title: {
     fontSize: 18,

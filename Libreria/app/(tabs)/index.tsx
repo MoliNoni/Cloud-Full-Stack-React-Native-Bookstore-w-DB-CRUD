@@ -1,15 +1,13 @@
 // Home Screen Component
 // Main landing page with best-sellers
 // Shows featured books and vinyl
-// Has animated drawer menu
-// Cart icon with item count
+// Modular sections and carousel support
 
 import React, { useCallback, useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   SafeAreaView,
   TouchableOpacity,
   ActivityIndicator,
@@ -19,8 +17,13 @@ import {
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getTopBestSellers, Product } from '../../lib/database';
-import { ProductCard } from '../../components/product-card';
+import {
+  getLatestProducts,
+  getTopBestSellers,
+  Product,
+} from '../../lib/database';
+import { SectionCarousel } from '../../components/section-carousel';
+import { ProfileMenu } from '../../components/profile-menu';
 import { useCart } from '../../lib/cart-context';
 import { useAuth } from '../../lib/auth-context';
 
@@ -29,23 +32,30 @@ export default function HomeScreen() {
   const router = useRouter();
   const { itemCount } = useCart();
   const { isAdmin } = useAuth();
-  const [bestSellers, setBestSellers] = useState<Product[]>([]);
-  const [vinylBestSellers, setVinylBestSellers] = useState<Product[]>([]);
+
+  const [bestSellersBooks, setBestSellersBooks] = useState<Product[]>([]);
+  const [bestSellersVinyls, setBestSellersVinyls] = useState<Product[]>([]);
+  const [latestBooks, setLatestBooks] = useState<Product[]>([]);
+  const [latestVinyls, setLatestVinyls] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
   const slideAnim = useRef(new Animated.Value(-280)).current;
 
-  // Load best-selling products
-  const loadBestSellers = useCallback(async () => {
+  const loadHomeData = useCallback(async () => {
     try {
-      const [books, vinyls] = await Promise.all([
+      const [books, vinyls, newBooks, newVinyls] = await Promise.all([
         getTopBestSellers('book'),
         getTopBestSellers('vinyl'),
+        getLatestProducts('book'),
+        getLatestProducts('vinyl'),
       ]);
-      setBestSellers(books);
-      setVinylBestSellers(vinyls);
+
+      setBestSellersBooks(books);
+      setBestSellersVinyls(vinyls);
+      setLatestBooks(newBooks);
+      setLatestVinyls(newVinyls);
     } catch (error) {
-      console.error('Error loading best sellers:', error);
+      console.error('Error loading home data:', error);
     } finally {
       setLoading(false);
     }
@@ -53,24 +63,16 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadBestSellers();
-    }, [loadBestSellers])
+      loadHomeData();
+    }, [loadHomeData])
   );
 
   useEffect(() => {
-    if (showMenu) {
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-    } else {
-      Animated.timing(slideAnim, {
-        toValue: -280,
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-    }
+    Animated.timing(slideAnim, {
+      toValue: showMenu ? 0 : -280,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
   }, [showMenu, slideAnim]);
 
   return (
@@ -87,12 +89,7 @@ export default function HomeScreen() {
           <Text style={styles.tagline}>Descubre tesoros literarios y musicales</Text>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.loginButton}
-            onPress={() => router.push('/signin')}
-          >
-            <Ionicons name="person-circle-outline" size={24} color="#4b0082" />
-          </TouchableOpacity>
+          <ProfileMenu />
           <TouchableOpacity
             style={styles.cartButton}
             onPress={() => router.push('/cart')}
@@ -114,7 +111,12 @@ export default function HomeScreen() {
             onPress={() => setShowMenu(false)}
             activeOpacity={1}
           />
-          <Animated.View style={[styles.drawerMenuWrapper, { transform: [{ translateX: slideAnim }] }]}>
+          <Animated.View
+            style={[
+              styles.drawerMenuWrapper,
+              { transform: [{ translateX: slideAnim }] },
+            ]}
+          >
             <TouchableOpacity
               style={styles.drawerCloseButton}
               onPress={() => setShowMenu(false)}
@@ -172,56 +174,50 @@ export default function HomeScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.banner}>
-            <Text style={styles.bannerTitle}>Top 5 Libros Best Sellers</Text>
-            <Text style={styles.bannerSubtitle}>
-              Los libros mas vendidos del catalogo
-            </Text>
-          </View>
-          <FlatList
-            data={bestSellers}
-            numColumns={2}
-            columnWrapperStyle={styles.columnWrapper}
-            renderItem={({ item }) => (
-              <ProductCard product={item} isBestSeller={true} />
-            )}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            ListFooterComponent={<View style={styles.sectionSpacing} />}
+          <SectionCarousel
+            title="Best Sellers en Libros"
+            subtitle="Los títulos más demandados por nuestros clientes"
+            products={bestSellersBooks}
+            isBestSeller
+            onSeeAll={() => router.push('/(tabs)/explore')}
           />
 
-          <View style={styles.banner}>
-            <Text style={styles.bannerTitle}>Top 5 Vinilos Best Sellers</Text>
-            <Text style={styles.bannerSubtitle}>
-              Los vinilos mas vendidos del catalogo
-            </Text>
-          </View>
-          <FlatList
-            data={vinylBestSellers}
-            numColumns={2}
-            columnWrapperStyle={styles.columnWrapper}
-            renderItem={({ item }) => (
-              <ProductCard product={item} isBestSeller={true} />
-            )}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
+          <SectionCarousel
+            title="Novedades en Libros"
+            subtitle="Los lanzamientos más recientes ordenados por fecha"
+            products={latestBooks}
+            onSeeAll={() => router.push('/(tabs)/explore')}
           />
 
-          <View style={styles.footer}>
+          <SectionCarousel
+            title="Best Sellers en Vinilos"
+            subtitle="Los discos más vendidos y recomendados"
+            products={bestSellersVinyls}
+            isBestSeller
+            onSeeAll={() => router.push('/(tabs)/vinyl')}
+          />
+
+          <SectionCarousel
+            title="Novedades en Vinilos"
+            subtitle="Los vinilos recién agregados a la tienda"
+            products={latestVinyls}
+            onSeeAll={() => router.push('/(tabs)/vinyl')}
+          />
+
+          <View style={styles.ctaRow}>
             <TouchableOpacity
-              style={styles.catalogButton}
+              style={styles.ctaCard}
               onPress={() => router.push('/(tabs)/explore')}
             >
-              <Ionicons name="book" size={24} color="#333" />
-              <Text style={styles.catalogText}>Catálogo de Libros</Text>
+              <Text style={styles.ctaTitle}>Explora libros</Text>
+              <Text style={styles.ctaText}>Ver toda la colección de libros.</Text>
             </TouchableOpacity>
-
             <TouchableOpacity
-              style={styles.catalogButton}
+              style={styles.ctaCard}
               onPress={() => router.push('/(tabs)/vinyl')}
             >
-              <Ionicons name="musical-notes" size={24} color="#333" />
-              <Text style={styles.catalogText}>Catálogo de Vinilos</Text>
+              <Text style={styles.ctaTitle}>Explora vinilos</Text>
+              <Text style={styles.ctaText}>Descubre nuevos lanzamientos musicales.</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -314,9 +310,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  loginButton: {
-    padding: 8,
-  },
   cartButton: {
     position: 'relative',
     padding: 8,
@@ -346,76 +339,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 8,
   },
-  columnWrapper: {
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-  },
-  sectionSpacing: {
-    height: 16,
-  },
-  banner: {
-    marginVertical: 16,
-    marginHorizontal: 8,
-    padding: 16,
-    backgroundColor: '#4b0082',
-    borderRadius: 12,
-  },
-  bannerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  bannerSubtitle: {
-    fontSize: 13,
-    color: '#ecf0f1',
-  },
-  viewAllButton: {
-    marginHorizontal: 8,
-    marginVertical: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#ffd700',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  secondaryButton: {
-    backgroundColor: '#ffd700',
-  },
-  viewAllText: {
-    color: '#333',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  footer: {
+  ctaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'stretch',
-    paddingVertical: 24,
-    paddingHorizontal: 12,
-    paddingBottom: 32,
     gap: 12,
-    backgroundColor: '#f5f5f5',
+    marginHorizontal: 8,
+    marginTop: 16,
+    marginBottom: 24,
   },
-  catalogButton: {
-    backgroundColor: '#ffd700',
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+  ctaCard: {
     flex: 1,
-    elevation: 3,
+    padding: 18,
+    borderRadius: 18,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  catalogText: {
-    color: '#333',
+  ctaTitle: {
+    fontSize: 16,
     fontWeight: '700',
-    fontSize: 15,
-    marginTop: 10,
-    textAlign: 'center',
+    color: '#1f2937',
+    marginBottom: 6,
+  },
+  ctaText: {
+    fontSize: 13,
+    color: '#4b5563',
+    lineHeight: 18,
   },
 });

@@ -23,7 +23,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getProductos, Product } from '../lib/database';
 import { ProductCard } from './product-card';
+import { ProfileMenu } from './profile-menu';
 import { useCart } from '../lib/cart-context';
+import { useAuth } from '../lib/auth-context';
 
 type CatalogScreenProps = {
   category: 'book' | 'vinyl';
@@ -45,6 +47,7 @@ export const CatalogScreen = ({
 }: CatalogScreenProps) => {
   const router = useRouter();
   const { itemCount } = useCart();
+  const { isAdmin } = useAuth();
   const [productos, setProductos] = useState<Product[]>([]);
   const [filteredProductos, setFilteredProductos] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,17 +130,20 @@ export const CatalogScreen = ({
           <Ionicons name="menu" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.title}>{title}</Text>
-        <TouchableOpacity
-          style={styles.cartButton}
-          onPress={() => router.push('/cart')}
-        >
-          <Ionicons name="cart" size={24} color="#ffd700" />
-          {itemCount > 0 && (
-            <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>{itemCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <ProfileMenu />
+          <TouchableOpacity
+            style={styles.cartButton}
+            onPress={() => router.push('/cart')}
+          >
+            <Ionicons name="cart" size={24} color="#ffd700" />
+            {itemCount > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{itemCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {showMenu && showNavigation && (
@@ -192,18 +198,22 @@ export const CatalogScreen = ({
               </TouchableOpacity>
             )}
 
-            <View style={styles.drawerDivider} />
+            {isAdmin && (
+              <>
+                <View style={styles.drawerDivider} />
 
-            <TouchableOpacity
-              style={styles.drawerMenuItem}
-              onPress={() => {
-                router.push('/admin' as any);
-                setShowMenu(false);
-              }}
-            >
-              <Ionicons name="settings" size={24} color="#4b0082" />
-              <Text style={styles.drawerMenuItemText}>Administracion</Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.drawerMenuItem}
+                  onPress={() => {
+                    router.push('/admin' as any);
+                    setShowMenu(false);
+                  }}
+                >
+                  <Ionicons name="settings" size={24} color="#4b0082" />
+                  <Text style={styles.drawerMenuItemText}>Administracion</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </Animated.View>
         </>
       )}
@@ -279,6 +289,11 @@ const styles = StyleSheet.create({
     color: '#333',
     flex: 1,
     textAlign: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   cartButton: {
     position: 'relative',
